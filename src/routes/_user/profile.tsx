@@ -1,7 +1,7 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Loader2, Terminal } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -13,9 +13,10 @@ import {
   getReplyNotificationStatusFn,
   toggleReplyNotificationFn,
 } from "@/features/email/email.api";
-import { authClient } from "@/lib/auth/auth.client";
 import { AUTH_KEYS } from "@/features/auth/queries";
 import { EMAIL_KEYS } from "@/features/email/queries";
+import { authClient } from "@/lib/auth/auth.client";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_user/profile")({
   component: ProfilePage,
@@ -35,17 +36,17 @@ export const Route = createFileRoute("/_user/profile")({
 
 const passwordSchema = z
   .object({
-    currentPassword: z.string().min(1, "需要当前密钥"),
-    newPassword: z.string().min(8, "新密钥至少 8 位"),
+    currentPassword: z.string().min(1, "需要当前密码"),
+    newPassword: z.string().min(8, "新密码至少 8 位"),
     confirmPassword: z.string(),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "密钥不匹配",
+    message: "两次输入的密码不一致",
     path: ["confirmPassword"],
   });
 
 const profileSchema = z.object({
-  name: z.string().min(2, "别名至少 2 位").max(30, "别名最多 30 位"),
+  name: z.string().min(2, "昵称至少 2 位").max(30, "昵称最多 30 位"),
   image: z.union([z.literal(""), z.url("无效的 URL 地址").trim()]).optional(),
 });
 
@@ -137,47 +138,61 @@ function ProfilePage() {
       return;
     }
     toast.success("资料已更新", {
-      description: `别名已更改为: ${data.name}`,
+      description: `昵称已更改为: ${data.name}`,
     });
   };
 
   const logout = async () => {
     const { error } = await authClient.signOut();
     if (error) {
-      toast.error("会话终止失败, 请稍后重试。", {
+      toast.error("退出失败, 请稍后重试。", {
         description: error.message,
       });
       return;
     }
     queryClient.removeQueries({ queryKey: AUTH_KEYS.session });
-    toast.success("会话已终止", {
-      description: "你已安全退出当前会话。",
+    toast.success("已退出登录", {
+      description: "期待再次相见。",
     });
     navigate({ to: "/" });
   };
 
   if (!user) {
-    // Should be handled by layout, but extra safety
     return null;
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-6 md:px-0 py-12 md:py-20 space-y-12">
-      {/* Back Navigation */}
-      <nav>
-        <button
-          onClick={() => navigate({ to: "/" })}
-          className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] opacity-40 hover:opacity-100 transition-opacity"
-        >
-          <ArrowLeft size={12} />
-          <span>返回</span>
-        </button>
-      </nav>
+    <div className="flex flex-col w-full max-w-3xl mx-auto px-6 md:px-0 py-12 md:py-20 space-y-20">
+      {/* Header Section - Aligned with Homepage */}
+      <header className="space-y-8">
+        <div className="flex justify-between items-start">
+          <div className="space-y-6">
+            <h1 className="text-4xl md:text-5xl font-serif font-medium tracking-tight text-foreground flex items-center gap-4">
+              个人设置
+            </h1>
+            <div className="space-y-4 max-w-2xl text-base md:text-lg text-muted-foreground font-light leading-relaxed">
+              <p>管理你的个人信息与偏好设置。</p>
+            </div>
+          </div>
 
-      {/* Identity Section */}
-      <section className="flex flex-col items-center text-center space-y-6">
+          <div className="pt-2">
+            <Link
+              to="/"
+              className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+            >
+              <Terminal size={14} />
+              cd /home
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <div className="w-full h-px bg-border/40" />
+
+      {/* Identity Section - Left Aligned */}
+      <section className="flex items-center gap-8">
         <div
-          className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border border-border bg-muted/30 relative z-10"
+          className="w-24 h-24 rounded-full overflow-hidden border border-border bg-muted/30 relative"
           style={{ viewTransitionName: "user-avatar" }}
         >
           {user.image ? (
@@ -187,144 +202,154 @@ function ProfilePage() {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground font-serif text-5xl">
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground font-serif text-3xl">
               {user.name.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
 
-        <div className="space-y-3">
-          <h1 className="text-3xl md:text-5xl font-serif text-foreground tracking-tight">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-serif text-foreground tracking-tight">
             {user.name}
-          </h1>
-          <div className="flex items-center justify-center gap-3 text-xs font-mono text-muted-foreground uppercase tracking-widest">
-            <span>{user.role === "admin" ? "管理员" : "读者"}</span>
-            <span className="w-1 h-1 bg-muted-foreground rounded-full" />
+          </h2>
+          <div className="flex flex-col gap-1 text-xs font-mono text-muted-foreground/60 tracking-widest">
+            <span className="uppercase">
+              {user.role === "admin" ? "管理员" : "读者"}
+            </span>
             <span>{user.email}</span>
           </div>
         </div>
       </section>
 
-      <div className="w-full h-px bg-border/40" />
+      {/* Settings Forms - Single Column Layout */}
+      <div className="space-y-16">
+        {/* Basic Info */}
+        <section className="space-y-8">
+          <h3 className="text-lg font-serif font-medium text-foreground">
+            基本资料
+          </h3>
 
-      {/* Settings Form */}
-      <section className="space-y-16 max-w-lg mx-auto">
-        {/* Profile Settings */}
-        <form
-          onSubmit={handleSubmitProfile(onProfileSubmit)}
-          className="space-y-8"
-        >
-          <div className="space-y-6">
-            <div className="space-y-2 group">
-              <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider group-focus-within:text-foreground transition-colors">
-                昵称
-              </label>
-              <Input
-                {...registerProfile("name")}
-                className="bg-transparent border-0 border-b border-border text-foreground font-serif text-lg px-0 rounded-none focus-visible:ring-0 focus-visible:border-foreground transition-all placeholder:text-muted-foreground/30 shadow-none"
-              />
-              {profileErrors.name && (
-                <span className="text-[10px] text-destructive font-mono">
-                  {profileErrors.name.message}
-                </span>
-              )}
-            </div>
-
-            <div className="space-y-2 group">
-              <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider group-focus-within:text-foreground transition-colors">
-                头像 URL
-              </label>
-              <Input
-                {...registerProfile("image")}
-                className="bg-transparent border-0 border-b border-border text-foreground font-mono text-sm px-0 rounded-none focus-visible:ring-0 focus-visible:border-foreground transition-all placeholder:text-muted-foreground/30 shadow-none"
-                placeholder="https://..."
-              />
-              {profileErrors.image && (
-                <span className="text-[10px] text-destructive font-mono">
-                  {profileErrors.image.message}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={isProfileSubmitting}
-              variant="ghost"
-              className="font-mono text-xs text-muted-foreground hover:text-foreground hover:bg-transparent p-0 h-auto transition-colors"
-            >
-              {isProfileSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 size={12} className="animate-spin" /> 保存中...
-                </span>
-              ) : (
-                "[ 保存更改 ]"
-              )}
-            </Button>
-          </div>
-        </form>
-
-        <div className="w-full h-px bg-border/40" />
-
-        {/* Notification Toggle */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-sm font-serif text-foreground">邮件通知</span>
-            <span className="text-[10px] font-mono text-muted-foreground block">
-              当有针对你评论的回复时
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={
-              isLoadingNotification || toggleNotificationMutation.isPending
-            }
-            onClick={() =>
-              toggleNotificationMutation.mutate(!notificationStatus?.enabled)
-            }
-            className={`
-                font-mono text-xs tracking-wider h-auto px-4 py-1.5 border transition-all rounded-full
-                ${
-                  notificationStatus?.enabled
-                    ? "border-foreground text-foreground"
-                    : "border-border text-muted-foreground hover:border-foreground/50"
-                }
-              `}
+          <form
+            onSubmit={handleSubmitProfile(onProfileSubmit)}
+            className="space-y-8"
           >
-            {notificationStatus?.enabled ? "ENABLED" : "DISABLED"}
-          </Button>
-        </div>
-
-        {/* Security Section (Password) */}
-        {hasPassword && (
-          <div className="space-y-8 pt-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-serif text-foreground">安全设置</h3>
-            </div>
-
-            <form
-              onSubmit={handleSubmitPassword(onPasswordSubmit)}
-              className="space-y-6"
-            >
+            <div className="space-y-6">
               <div className="space-y-2 group">
                 <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider group-focus-within:text-foreground transition-colors">
-                  当前密码
+                  昵称
                 </label>
                 <Input
-                  type="password"
-                  {...registerPassword("currentPassword")}
-                  className="bg-transparent border-0 border-b border-border text-foreground font-sans text-sm px-0 rounded-none focus-visible:ring-0 focus-visible:border-foreground transition-all placeholder:text-muted-foreground/30 shadow-none"
+                  {...registerProfile("name")}
+                  className="bg-transparent border-0 border-b border-border text-foreground font-serif text-lg px-0 rounded-none focus-visible:ring-0 focus-visible:border-foreground transition-all placeholder:text-muted-foreground/30 shadow-none h-auto py-2"
                 />
-                {passwordErrors.currentPassword && (
+                {profileErrors.name && (
                   <span className="text-[10px] text-destructive font-mono">
-                    {passwordErrors.currentPassword.message}
+                    {profileErrors.name.message}
                   </span>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2 group">
+                <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider group-focus-within:text-foreground transition-colors">
+                  头像链接
+                </label>
+                <Input
+                  {...registerProfile("image")}
+                  className="bg-transparent border-0 border-b border-border text-foreground font-mono text-sm px-0 rounded-none focus-visible:ring-0 focus-visible:border-foreground transition-all placeholder:text-muted-foreground/30 shadow-none h-auto py-2"
+                  placeholder="https://..."
+                />
+                {profileErrors.image && (
+                  <span className="text-[10px] text-destructive font-mono">
+                    {profileErrors.image.message}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-start">
+              <Button
+                type="submit"
+                disabled={isProfileSubmitting}
+                variant="ghost"
+                className="font-mono text-xs text-muted-foreground hover:text-foreground hover:bg-transparent p-0 h-auto transition-colors"
+              >
+                {isProfileSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 size={12} className="animate-spin" /> 保存中...
+                  </span>
+                ) : (
+                  "[ 保存更改 ]"
+                )}
+              </Button>
+            </div>
+          </form>
+        </section>
+
+        <div className="w-full h-px bg-border/40" />
+
+        {/* Notifications */}
+        <section className="space-y-8">
+          <h3 className="text-lg font-serif font-medium text-foreground">
+            偏好设置
+          </h3>
+          <div className="flex items-center justify-between py-2 border-b border-border/40">
+            <div className="space-y-1">
+              <span className="text-sm font-sans text-foreground">
+                邮件通知
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground block">
+                当收到回复时通知我
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={
+                isLoadingNotification || toggleNotificationMutation.isPending
+              }
+              onClick={() =>
+                toggleNotificationMutation.mutate(!notificationStatus?.enabled)
+              }
+              className={cn(
+                "font-mono text-[10px] tracking-wider h-auto px-3 py-1 border transition-all rounded-full",
+                notificationStatus?.enabled
+                  ? "border-foreground text-foreground"
+                  : "border-border text-muted-foreground hover:border-foreground/50",
+              )}
+            >
+              {notificationStatus?.enabled ? "已开启" : "已关闭"}
+            </Button>
+          </div>
+        </section>
+
+        {/* Security Section */}
+        {hasPassword && (
+          <>
+            <div className="w-full h-px bg-border/40" />
+            <section className="space-y-8">
+              <h3 className="text-lg font-serif font-medium text-foreground">
+                安全设置
+              </h3>
+              <form
+                onSubmit={handleSubmitPassword(onPasswordSubmit)}
+                className="space-y-6"
+              >
+                <div className="space-y-2 group">
+                  <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider group-focus-within:text-foreground transition-colors">
+                    当前密码
+                  </label>
+                  <Input
+                    type="password"
+                    {...registerPassword("currentPassword")}
+                    className="bg-transparent border-0 border-b border-border text-foreground font-sans text-sm px-0 rounded-none focus-visible:ring-0 focus-visible:border-foreground transition-all placeholder:text-muted-foreground/30 shadow-none h-auto py-2"
+                  />
+                  {passwordErrors.currentPassword && (
+                    <span className="text-[10px] text-destructive font-mono">
+                      {passwordErrors.currentPassword.message}
+                    </span>
+                  )}
+                </div>
+
                 <div className="space-y-2 group">
                   <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider group-focus-within:text-foreground transition-colors">
                     新密码
@@ -332,7 +357,7 @@ function ProfilePage() {
                   <Input
                     type="password"
                     {...registerPassword("newPassword")}
-                    className="bg-transparent border-0 border-b border-border text-foreground font-sans text-sm px-0 rounded-none focus-visible:ring-0 focus-visible:border-foreground transition-all placeholder:text-muted-foreground/30 shadow-none"
+                    className="bg-transparent border-0 border-b border-border text-foreground font-sans text-sm px-0 rounded-none focus-visible:ring-0 focus-visible:border-foreground transition-all placeholder:text-muted-foreground/30 shadow-none h-auto py-2"
                   />
                   {passwordErrors.newPassword && (
                     <span className="text-[10px] text-destructive font-mono">
@@ -340,6 +365,7 @@ function ProfilePage() {
                     </span>
                   )}
                 </div>
+
                 <div className="space-y-2 group">
                   <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider group-focus-within:text-foreground transition-colors">
                     确认密码
@@ -347,7 +373,7 @@ function ProfilePage() {
                   <Input
                     type="password"
                     {...registerPassword("confirmPassword")}
-                    className="bg-transparent border-0 border-b border-border text-foreground font-sans text-sm px-0 rounded-none focus-visible:ring-0 focus-visible:border-foreground transition-all placeholder:text-muted-foreground/30 shadow-none"
+                    className="bg-transparent border-0 border-b border-border text-foreground font-sans text-sm px-0 rounded-none focus-visible:ring-0 focus-visible:border-foreground transition-all placeholder:text-muted-foreground/30 shadow-none h-auto py-2"
                   />
                   {passwordErrors.confirmPassword && (
                     <span className="text-[10px] text-destructive font-mono">
@@ -355,39 +381,49 @@ function ProfilePage() {
                     </span>
                   )}
                 </div>
-              </div>
 
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  disabled={isPasswordSubmitting}
-                  variant="ghost"
-                  className="font-mono text-xs text-muted-foreground hover:text-foreground hover:bg-transparent p-0 h-auto transition-colors"
-                >
-                  {isPasswordSubmitting ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 size={12} className="animate-spin" /> 更新中...
-                    </span>
-                  ) : (
-                    "[ 更新密码 ]"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
+                <div className="flex justify-start pt-2">
+                  <Button
+                    type="submit"
+                    disabled={isPasswordSubmitting}
+                    variant="ghost"
+                    className="font-mono text-xs text-muted-foreground hover:text-foreground hover:bg-transparent p-0 h-auto transition-colors"
+                  >
+                    {isPasswordSubmitting ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 size={12} className="animate-spin" /> 更新中...
+                      </span>
+                    ) : (
+                      "[ 更新密码 ]"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </section>
+          </>
         )}
 
-        {/* Logout Action */}
-        <div className="pt-12 flex justify-center">
+        <div className="w-full h-px bg-border/40" />
+
+        {/* Action Links */}
+        <section className="flex flex-col items-start gap-4">
+          {user.role === "admin" && (
+            <Link
+              to="/admin"
+              className="font-mono text-xs text-foreground/60 hover:text-foreground transition-colors uppercase tracking-wider flex items-center gap-2"
+            >
+              <span>[ 进入管理后台 ]</span>
+            </Link>
+          )}
           <Button
             variant="ghost"
             onClick={logout}
-            className="font-mono text-xs text-muted-foreground/50 hover:text-destructive hover:bg-transparent tracking-widest transition-colors scale-90 hover:scale-100"
+            className="font-mono text-xs text-destructive/60 hover:text-destructive hover:bg-transparent p-0 h-auto transition-colors tracking-widest"
           >
             [ 退出登录 ]
           </Button>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
