@@ -1,7 +1,0 @@
-{
-  "keep_vars": true, // 每次构建不清楚运行时变量
-  "routes": [{ "pattern": "docs.iaiii.cc", "custom_domain": true }],
-  "d1_databases": [{ "binding": "DB", "database_id": "a31300bd-9f7f-49d7-9895-b45df53cf7c1", ... }],
-  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "flare-stack-blog", ... }],
-  "kv_namespaces": [{ "binding": "KV", "id": "4ef566e828c44cee882a62afa3288123", ... }]
-}
